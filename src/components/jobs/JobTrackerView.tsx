@@ -1,13 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { JobApplication, JobFilters, JobStatus } from '@/types/job'
-import {
-  loadStoredJobs,
-  saveStoredJobs,
-  INITIAL_SEED_JOBS,
-  createNewJob,
-  getUniqueCompanies,
-  getUniqueRoles,
-} from '@/lib/storage'
+import { createNewJob, getUniqueCompanies, getUniqueRoles } from '@/lib/storage'
+import { jobsApi } from '@/lib/api'
+import { useJobs } from '@/lib/use-jobs'
+import { X } from 'lucide-react'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { JobTable } from './JobTable'
 import { JobDetailPanel } from './JobDetailPanel'
@@ -38,9 +34,25 @@ export const JobTrackerView: React.FC<JobTrackerViewProps> = ({
   onUpdateCounts,
   onJobsChange,
 }) => {
-  const [jobs, setJobs] = useState<JobApplication[]>(() => loadStoredJobs())
+  const {
+    jobs,
+    revision,
+    error,
+    dismissError,
+    updateJob,
+    createJob,
+    deleteJob,
+    attachResume,
+    removeResume,
+  } = useJobs()
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [draftJob, setDraftJob] = useState<JobApplication | null>(null)
+  /** PDF picked while drafting; uploaded once the application is created. */
+  const [draftResumeFile, setDraftResumeFile] = useState<File | null>(null)
+  const draftResumeUrl = useMemo(() => (draftResumeFile ? URL.createObjectURL(draftResumeFile) : undefined), [draftResumeFile])
+  useEffect(() => () => {
+    if (draftResumeUrl) URL.revokeObjectURL(draftResumeUrl)
+  }, [draftResumeUrl])
   const draftBaselineRef = useRef<string | null>(null)
   const [isDraftExitDialogOpen, setIsDraftExitDialogOpen] = useState(false)
 
@@ -71,6 +83,7 @@ export const JobTrackerView: React.FC<JobTrackerViewProps> = ({
     } else {
       draftBaselineRef.current = null
       setDraftJob(null)
+      setDraftResumeFile(null)
     }
   }
 
@@ -87,7 +100,6 @@ export const JobTrackerView: React.FC<JobTrackerViewProps> = ({
     }
     onUpdateCounts(counts)
     onJobsChange?.(jobs)
-    saveStoredJobs(jobs)
   }, [jobs])
 
   // Global hotkeys: N opens quick capture; Escape closes it without losing edits.
@@ -266,14 +278,31 @@ export const JobTrackerView: React.FC<JobTrackerViewProps> = ({
       setDraftJob(updatedJob)
       return
     }
-    const editedJob = { ...updatedJob, updatedAt: new Date().toISOString() }
-    setJobs((prev) => prev.map((job) => (job.id === editedJob.id ? editedJob : job)))
+    updateJob({ ...updatedJob, updatedAt: new Date().toISOString() })
   }
 
   const handleDeleteJob = (jobId: string) => {
-    setJobs((prev) => prev.filter((j) => j.id !== jobId))
     if (selectedJobId === jobId) {
       setSelectedJobId(null)
+    }
+    void deleteJob(jobId)
+  }
+
+  const handleAttachResume = (file: File) => {
+    if (draftJob) {
+      setDraftResumeFile(file)
+      setDraftJob({ ...draftJob, resume: { name: file.name, uploadedAt: new Date().toISOString() } })
+    } else if (selectedJobId) {
+      void attachResume(selectedJobId, file)
+    }
+  }
+
+  const handleRemoveResume = () => {
+    if (draftJob) {
+      setDraftResumeFile(null)
+      setDraftJob({ ...draftJob, resume: undefined })
+    } else if (selectedJobId) {
+      void removeResume(selectedJobId)
     }
   }
 
@@ -296,20 +325,14 @@ export const JobTrackerView: React.FC<JobTrackerViewProps> = ({
   }
 
   // Save new job
-  const handleSaveDraftJob = (newJob: JobApplication) => {
-    const timestamp = new Date().toISOString()
-    const savedJob = { ...newJob, createdAt: timestamp, updatedAt: timestamp }
-    setJobs((prev) => [savedJob, ...prev])
+  const handleSaveDraftJob = async (newJob: JobApplication) => {
+    const savedJob = await createJob(newJob, draftResumeFile)
+    if (!savedJob) return
     draftBaselineRef.current = null
     setIsDraftExitDialogOpen(false)
     setDraftJob(null)
+    setDraftResumeFile(null)
     setSelectedJobId(savedJob.id)
-  }
-
-  const handleResetData = () => {
-    setJobs(INITIAL_SEED_JOBS)
-    setSelectedJobId(null)
-    setDraftJob(null)
   }
 
   const hasActiveFilters =
@@ -336,9 +359,17 @@ export const JobTrackerView: React.FC<JobTrackerViewProps> = ({
         onSearchChange={(q) => setFilters((prev) => ({ ...prev, search: q }))}
         onToggleQuickAdd={handleToggleQuickAdd}
         isQuickAddOpen={!!draftJob}
-        onResetData={handleResetData}
         totalCount={filteredJobs.length}
       />
+
+      {error && (
+        <div role="alert" className="flex items-center justify-between gap-3 border-b border-destructive/30 bg-destructive/10 px-5 py-2 text-sm text-destructive">
+          <span>{error}</span>
+          <button type="button" onClick={dismissError} aria-label="Dismiss error" className="rounded p-1 hover:bg-destructive/10">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       <JobFilterBar
         filters={filters}
@@ -403,6 +434,10 @@ export const JobTrackerView: React.FC<JobTrackerViewProps> = ({
               onUpdateJob={handleUpdateJob}
               onSaveNewJob={handleSaveDraftJob}
               onClose={requestCloseDraft}
+              revision={revision}
+              resumeUrl={draftResumeUrl}
+              onAttachResume={handleAttachResume}
+              onRemoveResume={handleRemoveResume}
             />
           </div>
         )}
@@ -420,6 +455,10 @@ export const JobTrackerView: React.FC<JobTrackerViewProps> = ({
               onUpdateJob={handleUpdateJob}
               onDeleteJob={handleDeleteJob}
               onClose={() => setSelectedJobId(null)}
+              revision={revision}
+              resumeUrl={selectedJob.resume ? `${jobsApi.resumeUrl(selectedJob.id)}?v=${encodeURIComponent(selectedJob.resume.uploadedAt)}` : undefined}
+              onAttachResume={handleAttachResume}
+              onRemoveResume={handleRemoveResume}
             />
           </div>
         )}
@@ -445,6 +484,7 @@ export const JobTrackerView: React.FC<JobTrackerViewProps> = ({
                   draftBaselineRef.current = null
                   setIsDraftExitDialogOpen(false)
                   setDraftJob(null)
+                  setDraftResumeFile(null)
                 }}
               >
                 Discard changes

@@ -1,7 +1,6 @@
 import React, { useRef } from 'react'
 import { Download, ExternalLink, FileText, Paperclip, Trash2 } from 'lucide-react'
-import { JobApplication } from '@/types/job'
-import { getFormattedDateTime } from '@/lib/storage'
+import { JobResume } from '@/types/job'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -16,51 +15,20 @@ import {
 } from '@/components/ui/alert-dialog'
 
 interface ResumeAttachmentsProps {
-  job: JobApplication
-  onUpdateJob: (updatedJob: JobApplication) => void
+  resume?: JobResume
+  /** Where the attached PDF can be opened or downloaded. */
+  resumeUrl?: string
+  onAttach: (file: File) => void
+  onRemove: () => void
 }
 
-export const ResumeAttachments: React.FC<ResumeAttachmentsProps> = ({ job, onUpdateJob }) => {
+export const ResumeAttachments: React.FC<ResumeAttachmentsProps> = ({ resume, resumeUrl, onAttach, onRemove }) => {
   const pdfInputRef = useRef<HTMLInputElement>(null)
-  const hasPdf = Boolean(job.resume?.pdfDataUrl)
 
   const handlePdfUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      onUpdateJob({
-        ...job,
-        resume: {
-          name: file.name,
-          pdfDataUrl: reader.result as string,
-          uploadedAt: getFormattedDateTime(new Date()),
-        },
-      })
-    }
-    reader.readAsDataURL(file)
+    if (file) onAttach(file)
     event.target.value = ''
-  }
-
-  const handleRemovePdf = () => {
-    onUpdateJob({
-      ...job,
-      resume: undefined,
-    })
-  }
-
-  const handleViewPdf = async () => {
-    if (!job.resume?.pdfDataUrl) return
-
-    const pdfTab = window.open('about:blank', '_blank')
-    if (!pdfTab) return
-    pdfTab.opener = null
-
-    const response = await fetch(job.resume.pdfDataUrl)
-    const pdfUrl = URL.createObjectURL(await response.blob())
-    pdfTab.location.replace(pdfUrl)
-    window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 60_000)
   }
 
   return (
@@ -80,27 +48,22 @@ export const ResumeAttachments: React.FC<ResumeAttachmentsProps> = ({ job, onUpd
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">Resume</p>
           <p className="truncate text-sm text-muted-foreground">
-            {hasPdf ? job.resume?.name || 'Resume.pdf' : 'No PDF attached'}
+            {resume ? resume.name : 'No PDF attached'}
           </p>
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
-        {hasPdf && job.resume?.pdfDataUrl ? (
+        {resume && resumeUrl ? (
           <>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={handleViewPdf}
-              aria-label={`View ${job.resume.name || 'resume PDF'} in a new tab`}
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              View
+            <Button variant="ghost" size="sm" asChild className="h-8 gap-1.5">
+              <a href={resumeUrl} target="_blank" rel="noopener noreferrer" aria-label={`View ${resume.name} in a new tab`}>
+                <ExternalLink className="h-3.5 w-3.5" />
+                View
+              </a>
             </Button>
             <Button variant="ghost" size="sm" asChild className="h-8 gap-1.5">
-              <a href={job.resume.pdfDataUrl} download={job.resume.name || 'Resume.pdf'}>
+              <a href={resumeUrl} download={resume.name}>
                 <Download className="h-3.5 w-3.5" />
                 Download
               </a>
@@ -136,7 +99,7 @@ export const ResumeAttachments: React.FC<ResumeAttachmentsProps> = ({ job, onUpd
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Keep PDF</AlertDialogCancel>
-                  <AlertDialogAction variant="destructive" onClick={handleRemovePdf}>
+                  <AlertDialogAction variant="destructive" onClick={onRemove}>
                     Remove PDF
                   </AlertDialogAction>
                 </AlertDialogFooter>

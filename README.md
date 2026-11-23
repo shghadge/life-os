@@ -7,6 +7,8 @@ A personal dashboard for the parts of life that need tracking. Currently ships t
 
 Knowledge & Notes, Habits & Goals, Finances, and Daily Timeline are planned and appear in the sidebar as "Soon".
 
+Life OS is built for agents too: an [MCP](https://modelcontextprotocol.io) server lets Claude Code, Claude Desktop, or any MCP-capable agent read and update your job pipeline. The dashboard is the human view of the same data.
+
 ![Job tracker](docs/screenshots/job-tracker.png)
 
 ## Job Tracker
@@ -19,6 +21,7 @@ Knowledge & Notes, Habits & Goals, Finances, and Daily Timeline are planned and 
 - Store interview questions and answers for each application.
 - Attach the PDF resume you sent to each application.
 - Starred view and an application calendar that filters by applied date.
+- Activity log on every application showing what changed and whether you or an agent changed it. Agent changes appear in the open dashboard within a couple of seconds.
 - Light and dark themes.
 
 ![Job description with extracted details](docs/screenshots/job-description.png)
@@ -36,6 +39,58 @@ Knowledge & Notes, Habits & Goals, Finances, and Daily Timeline are planned and 
 | `Alt + 1/2/3` | Details / Job Description / Responses tabs |
 | `Ctrl/⌘ + Enter` | Save a new application |
 | `Esc` | Close panel or modal |
+
+## Agent access (MCP)
+
+The MCP server (`server/mcp.ts`) runs over stdio and works on the same database as the dashboard.
+
+| Tool | What it does |
+|---|---|
+| `list_jobs` | List applications, filtered by status, starred, or a text query |
+| `get_job` | Full application: description, parsed metadata, notes, Q&A, resume, recent activity |
+| `add_job` | Create an application; pass the posting text and salary, experience, and tech stack are extracted |
+| `update_job` | Change status, details, salary, URL, or description |
+| `append_note` | Add a dated line to an application's notes |
+| `add_interview_answer` | Save an interview question and prepared answer |
+| `attach_resume` | Attach a PDF from the local filesystem |
+| `delete_job` | Delete an application (agents are told to confirm first) |
+| `pipeline_summary` | Counts by status, stale applications to follow up on, recent activity |
+
+It also exposes the resource `life-os://pipeline` with the same summary.
+
+Replace `/path/to/life-os` below with the absolute path of your checkout. Run `npm install` first.
+
+**Claude Code**
+
+```bash
+claude mcp add --scope user life-os -- /path/to/life-os/node_modules/.bin/tsx /path/to/life-os/server/mcp.ts
+```
+
+**Claude Desktop and other MCP clients** (`claude_desktop_config.json`, Cursor's `mcp.json`, and similar):
+
+```json
+{
+  "mcpServers": {
+    "life-os": {
+      "command": "/path/to/life-os/node_modules/.bin/tsx",
+      "args": ["/path/to/life-os/server/mcp.ts"]
+    }
+  }
+}
+```
+
+If the repo lives in WSL and the client runs on Windows, launch it through WSL so Node comes from your login shell:
+
+```json
+{
+  "mcpServers": {
+    "life-os": {
+      "command": "wsl.exe",
+      "args": ["bash", "-lc", "/path/to/life-os/node_modules/.bin/tsx /path/to/life-os/server/mcp.ts"]
+    }
+  }
+}
+```
 
 ## Active Vocabulary
 
@@ -56,34 +111,43 @@ Go to **Word bank → Import JSON** and pick a file containing an array of word 
 
 ## Roadmap
 
-- **Database integration**: persistent storage and sync across devices.
+- Agent tools for the vocabulary trainer.
+- Remote MCP access over HTTP, with authentication, for phones and web clients.
 - New modules: Knowledge & Notes, Habits & Goals, Finances, and Daily Timeline.
 
 ## Getting started
 
-Requires Node.js 20.19+ or 22.12+ (Vite 8).
+Requires Node.js 22.13+ (uses the built-in `node:sqlite`).
 
 ```bash
 npm install
-npm run dev       # http://localhost:5173
+npm run dev       # dashboard and API at http://localhost:5173
+npm run db:seed   # optional: load sample applications
 ```
 
-On first launch the job tracker is seeded with sample applications.
+Data is stored in a SQLite database at `~/.life-os/life.db`, with resume PDFs in `~/.life-os/resumes/`. Set `LIFE_OS_DATA_DIR` to use another directory; set it to the same value for the dashboard and the MCP server (`"env": { "LIFE_OS_DATA_DIR": "..." }` in client configs).
 
 | Script | Purpose |
 |---|---|
 | `npm run build` | Type-check and build to `dist/` |
-| `npm run preview` | Serve the production build |
+| `npm run preview` | Serve the production build (with the API) |
+| `npm run mcp` | Run the MCP server on stdio |
+| `npm run db:seed` | Load sample applications |
 | `npm test` | Run Vitest |
 | `npm run lint` | Run Oxlint |
 
 ## Tech stack
 
-React 19, TypeScript, Vite, Tailwind CSS v4, Radix UI / shadcn components, lucide icons, ts-fsrs, and Vitest.
+React 19, TypeScript, Vite, Tailwind CSS v4, Radix UI / shadcn components, lucide icons, ts-fsrs, SQLite (`node:sqlite`), the MCP TypeScript SDK, and Vitest.
 
 ## Project layout
 
 ```
+server/
+  db.ts           SQLite schema and data directory
+  jobs.ts         Job store: validation and activity log, shared by the API and MCP server
+  api.ts          JSON API for the dashboard (Vite plugin, dev and preview)
+  mcp.ts          MCP server for agents
 src/
   components/
     jobs/         Job tracker table, filters, detail panel, JD modal
@@ -92,6 +156,6 @@ src/
     layout/       Sidebar, header, app shell
     calendar/     Application calendar
     ui/           shadcn/Radix primitives
-  lib/            Storage, JD parser, vocabulary service and validation
+  lib/            API client, JD parser, vocabulary service and validation
   types/          Domain types
 ```

@@ -22,6 +22,7 @@ import { STATUS_CONFIG } from '@/lib/status'
 import { parseRawJobDescription } from '@/lib/jd-parser'
 import { JobExpandedJDModal } from './JobExpandedJDModal'
 import { ResumeAttachments } from '@/components/resume/ResumeAttachments'
+import { JobActivityLog } from './JobActivityLog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -47,6 +48,11 @@ interface JobDetailPanelProps {
   onSaveNewJob?: (job: JobApplication) => void
   onDeleteJob?: (jobId: string) => void
   onClose: () => void
+  /** Server data revision; refreshes the activity log when anyone changes data. */
+  revision: number
+  resumeUrl?: string
+  onAttachResume: (file: File) => void
+  onRemoveResume: () => void
 }
 
 const COMMON_QUESTION_TEMPLATES = [
@@ -69,6 +75,10 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   onSaveNewJob,
   onDeleteJob,
   onClose,
+  revision,
+  resumeUrl,
+  onAttachResume,
+  onRemoveResume,
 }) => {
   const [activeTab, setActiveTab] = useState<'details' | 'raw_jd' | 'qa'>('details')
   const [rawText, setRawText] = useState(job.rawDescription || '')
@@ -630,7 +640,12 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               </div>
             </div>
 
-            <ResumeAttachments job={job} onUpdateJob={onUpdateJob} />
+            <ResumeAttachments
+              resume={job.resume}
+              resumeUrl={resumeUrl}
+              onAttach={onAttachResume}
+              onRemove={onRemoveResume}
+            />
 
             <div>
               <div className="mb-1.5 flex items-center justify-between">
@@ -758,6 +773,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 </span>
               </div>
             )}
+
+            {!isDraft && <JobActivityLog jobId={job.id} revision={revision} />}
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import { ExtractedMetadata, WorkplaceType } from '../types/job'
+import type { ExtractedMetadata, WorkplaceType } from '../types/job.ts'
 
 const KNOWN_TECH_STACK = [
   'React', 'TypeScript', 'JavaScript', 'Next.js', 'Node.js', 'Python', 'Go', 'Golang',
@@ -32,7 +32,6 @@ export function parseRawJobDescription(text: string): {
   }
 
   // Detect tech stack
-  const lower = clean.toLowerCase()
   const detectedTech = KNOWN_TECH_STACK.filter(tech => {
     const regex = new RegExp(`\\b${tech.replace('+', '\\+')}\\b`, 'i')
     return regex.test(clean)

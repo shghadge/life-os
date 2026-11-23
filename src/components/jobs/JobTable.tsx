@@ -235,7 +235,7 @@ export const JobTable: React.FC<JobTableProps> = ({
                       <span className={cn('min-w-0 flex-1 truncate text-sm font-medium', isSelected ? 'font-semibold text-foreground' : 'text-foreground/90')}>
                         {job.role}
                       </span>
-                      {(job.rawDescription || job.qaList?.length > 0 || job.resume?.pdfDataUrl) && (
+                      {(job.rawDescription || job.qaList?.length > 0 || job.resume) && (
                         <div className="flex shrink-0 items-center gap-3 text-[13px] font-medium text-muted-foreground">
                           {job.rawDescription && (
                             <span className="inline-flex items-center gap-1.5" title="Job description saved">
@@ -249,10 +249,10 @@ export const JobTable: React.FC<JobTableProps> = ({
                               {job.qaList.length} {job.qaList.length === 1 ? 'response' : 'responses'}
                             </span>
                           )}
-                          {job.resume?.pdfDataUrl && (
+                          {job.resume && (
                             <span
                               className="inline-flex items-center gap-1.5"
-                              title={`Attached resume: ${job.resume.name || 'Resume.pdf'}`}
+                              title={`Attached resume: ${job.resume.name}`}
                             >
                               <Paperclip className="h-3.5 w-3.5" />
                               Resume

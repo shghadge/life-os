@@ -23,17 +23,31 @@ export interface ExtractedMetadata {
   responsibilities: string[]
 }
 
+export type ActivityActor = 'agent' | 'dashboard'
+
+export type ActivityAction =
+  | 'created'
+  | 'updated'
+  | 'status_changed'
+  | 'qa_added'
+  | 'resume_attached'
+  | 'resume_removed'
+  | 'deleted'
+  | 'imported'
+
 export interface JobActivity {
-  id: string
-  timestamp: string
-  type: 'status_change' | 'note_added' | 'qa_added' | 'created'
-  description: string
+  id: number
+  jobId: string
+  actor: ActivityActor
+  action: ActivityAction
+  summary: string
+  createdAt: string
 }
 
+/** Metadata for the attached resume PDF; the file itself is served from /api/jobs/:id/resume. */
 export interface JobResume {
-  name?: string
-  pdfDataUrl?: string
-  uploadedAt?: string
+  name: string
+  uploadedAt: string
 }
 
 export interface JobApplication {
@@ -53,8 +67,28 @@ export interface JobApplication {
   notes: string
   starred?: boolean
   extractedMetadata?: ExtractedMetadata
-  activities?: JobActivity[]
 }
+
+/** Fields a client may set when creating or editing an application. */
+export type JobInput = Pick<JobApplication, 'company' | 'role'> &
+  Partial<
+    Pick<
+      JobApplication,
+      | 'status'
+      | 'appliedDate'
+      | 'salaryMin'
+      | 'salaryMax'
+      | 'url'
+      | 'rawDescription'
+      | 'qaList'
+      | 'notes'
+      | 'starred'
+      | 'extractedMetadata'
+    >
+  > & { id?: string }
+
+/** Partial edit; `null` clears an optional field. */
+export type JobPatch = { [K in keyof Omit<JobInput, 'id'>]?: Omit<JobInput, 'id'>[K] | null }
 
 export type ViewMode = 'table' | 'dense'
 

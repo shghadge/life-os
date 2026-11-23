@@ -1,26 +1,14 @@
 import React, { useRef, useEffect } from 'react'
-import { Search, Plus, RotateCcw, Sun, Moon, X } from 'lucide-react'
+import { Search, Plus, Sun, Moon, X } from 'lucide-react'
 import { useTheme } from '@/context/ThemeContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
 
 interface AppHeaderProps {
   searchQuery: string
   onSearchChange: (query: string) => void
   onToggleQuickAdd: () => void
   isQuickAddOpen: boolean
-  onResetData: () => void
   totalCount: number
 }
 
@@ -29,7 +17,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onSearchChange,
   onToggleQuickAdd,
   isQuickAddOpen,
-  onResetData,
   totalCount,
 }) => {
   const { resolvedTheme, toggleTheme } = useTheme()
@@ -125,33 +112,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <Moon className="h-4 w-4" />
           )}
         </Button>
-
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-9 w-9"
-              aria-label="Reset sample applications"
-              title="Reset sample applications"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Reset all applications?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This replaces your current application list with the original sample applications.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Keep current applications</AlertDialogCancel>
-              <AlertDialogAction onClick={onResetData}>Reset applications</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </header>
   )

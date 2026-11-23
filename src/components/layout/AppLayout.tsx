@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { LifeModuleId } from '@/types/navigation'
 import { JobApplication } from '@/types/job'
-import { loadStoredJobs } from '@/lib/storage'
 import { AppSidebar } from './AppSidebar'
 import { JobTrackerView } from '@/components/jobs/JobTrackerView'
 import { VocabularyTrainer } from '@/components/vocabulary/VocabularyTrainer'
@@ -12,7 +11,7 @@ export const AppLayout: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isStarredView, setIsStarredView] = useState(false)
   const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null)
-  const [allJobs, setAllJobs] = useState<JobApplication[]>(() => loadStoredJobs())
+  const [allJobs, setAllJobs] = useState<JobApplication[]>([])
 
   const [jobCounts, setJobCounts] = useState({
     total: 0,
