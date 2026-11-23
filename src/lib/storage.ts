@@ -1,7 +1,7 @@
-import { JobApplication, JobStatus, JobResume } from '@/types/job'
+import type { JobApplication, JobStatus, JobResume } from '../types/job.ts'
 
-export function getTodayDateString(): string {
-  const today = new Date()
+/** YYYY-MM-DD in the machine's time zone (toISOString would give the UTC day). */
+export function getTodayDateString(today = new Date()): string {
   const year = today.getFullYear()
   const month = String(today.getMonth() + 1).padStart(2, '0')
   const day = String(today.getDate()).padStart(2, '0')

@@ -7,9 +7,6 @@ import type { JobInput, JobPatch } from '../src/types/job.ts'
 
 const MAX_BODY_BYTES = 25 * 1024 * 1024
 
-/** Optional fields the dashboard omits from JSON when empty; on PUT, omission means "clear". */
-const CLEARABLE_FIELDS = ['salaryMin', 'salaryMax', 'url', 'extractedMetadata'] as const
-
 type Handler = (req: IncomingMessage, res: ServerResponse, next: () => void) => void
 
 /** Serves the dashboard's JSON API under /api from the same Vite process (dev and preview). */
@@ -74,9 +71,7 @@ async function route(store: JobStore, req: IncomingMessage, res: ServerResponse,
   } else if (!sub) {
     if (method === 'GET') return sendJson(res, 200, { job: store.get(id) })
     if (method === 'PUT') {
-      const patch = (await readJson(req)) as Record<string, unknown>
-      for (const field of CLEARABLE_FIELDS) patch[field] ??= null
-      const job = store.update(id, patch as JobPatch, 'dashboard')
+      const job = store.update(id, (await readJson(req)) as JobPatch, 'dashboard')
       return sendJson(res, 200, { job, revision: store.revision() })
     }
     if (method === 'DELETE') {
@@ -93,7 +88,8 @@ async function route(store: JobStore, req: IncomingMessage, res: ServerResponse,
         'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(resume.name)}`,
         'Cache-Control': 'no-store',
       })
-      createReadStream(resume.path).pipe(res)
+      // A missing file would otherwise throw an unhandled stream error and stop the server.
+      createReadStream(resume.path).on('error', () => res.destroy()).pipe(res)
       return
     }
     if (method === 'PUT') {

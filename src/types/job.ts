@@ -1,5 +1,3 @@
-export type WorkplaceType = 'remote' | 'hybrid' | 'onsite'
-
 export type JobStatus =
   | 'not_applied'
   | 'applied'

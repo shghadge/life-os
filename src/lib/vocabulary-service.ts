@@ -15,6 +15,7 @@ import type {
   WordProfile,
 } from '@/types/vocabulary'
 import { validateWordImport } from '@/lib/vocabulary-validation'
+import { getTodayDateString } from '@/lib/storage'
 
 const WORDS_KEY = 'life_os_vocabulary_words_v1'
 const PROGRESS_KEY = 'life_os_vocabulary_progress_v1'
@@ -376,7 +377,7 @@ export class VocabularyService {
       state: stateName(scheduled.state),
       lastReview: scheduled.last_review?.toISOString() ?? reviewTime.toISOString(),
     }
-    progress.lastReviewedDate = reviewTime.toISOString().slice(0, 10)
+    progress.lastReviewedDate = getTodayDateString(reviewTime)
     progress.history.push({
       date: progress.lastReviewedDate,
       recognitionScore: result.recognitionScore,

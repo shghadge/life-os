@@ -40,8 +40,9 @@ export function VocabularyTrainer() {
     setDashboard(service.getDashboard(LOCAL_VOCABULARY_USER_ID))
   }
 
+  // Through runServiceAction so unreadable stored data shows in the error banner instead of crashing the app.
   useEffect(() => {
-    refresh()
+    runServiceAction(() => {})
   }, [])
 
   const runServiceAction = (action: () => void) => {

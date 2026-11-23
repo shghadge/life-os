@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { JobApplication, JobFilters, JobStatus } from '@/types/job'
-import { createNewJob, getUniqueCompanies, getUniqueRoles } from '@/lib/storage'
+import { createNewJob, getTodayDateString, getUniqueCompanies, getUniqueRoles } from '@/lib/storage'
 import { jobsApi } from '@/lib/api'
 import { useJobs } from '@/lib/use-jobs'
 import { X } from 'lucide-react'
@@ -317,7 +317,7 @@ export const JobTrackerView: React.FC<JobTrackerViewProps> = ({
       company: '',
       role: '',
       status: 'not_applied',
-      appliedDate: new Date().toISOString().split('T')[0],
+      appliedDate: getTodayDateString(),
       notes: '',
     })
     draftBaselineRef.current = JSON.stringify(newDraft)

@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { openDatabase, resolveDataDir } from './db.ts'
 import { JOB_STATUSES, JobStore } from './jobs.ts'
 import type { JobApplication } from '../src/types/job.ts'
+import { getTodayDateString } from '../src/lib/storage.ts'
 
 const store = new JobStore(openDatabase(), resolveDataDir())
 
@@ -128,7 +129,7 @@ server.registerTool(
   },
   ({ id, text }) => {
     const job = store.get(id)
-    const entry = `[${new Date().toISOString().slice(0, 10)}] ${text.trim()}`
+    const entry = `[${getTodayDateString()}] ${text.trim()}`
     return json(store.update(id, { notes: job.notes.trim() ? `${job.notes.trim()}\n\n${entry}` : entry }, 'agent'))
   }
 )

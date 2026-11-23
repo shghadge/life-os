@@ -1,4 +1,4 @@
-import type { ExtractedMetadata, WorkplaceType } from '../types/job.ts'
+import type { ExtractedMetadata } from '../types/job.ts'
 
 const KNOWN_TECH_STACK = [
   'React', 'TypeScript', 'JavaScript', 'Next.js', 'Node.js', 'Python', 'Go', 'Golang',
@@ -10,11 +10,14 @@ const KNOWN_TECH_STACK = [
   'Webpack', 'Vite', 'Turborepo', 'Microservices', 'System Design'
 ]
 
+/** Names that are also everyday words ("go", "rest", "react"): only matched with exact capitals. */
+const CASE_SENSITIVE_TECH: Record<string, true> = {
+  Go: true, REST: true, React: true, Rust: true, Spark: true, Swift: true, Ruby: true, Rails: true, Flask: true,
+}
+
 export function parseRawJobDescription(text: string): {
   detectedCompany?: string
   detectedRole?: string
-  detectedLocation?: string
-  workplaceType: WorkplaceType
   salaryMin?: number
   salaryMax?: number
   extractedMetadata: ExtractedMetadata
@@ -22,7 +25,6 @@ export function parseRawJobDescription(text: string): {
   const clean = text.trim()
   if (!clean) {
     return {
-      workplaceType: 'remote',
       extractedMetadata: {
         techStack: [],
         keyRequirements: [],
@@ -31,34 +33,25 @@ export function parseRawJobDescription(text: string): {
     }
   }
 
-  // Detect tech stack
+  // Detect tech stack. Edges exclude letters, digits and "+", so "Go" skips "Golang" and "C++" is found.
   const detectedTech = KNOWN_TECH_STACK.filter(tech => {
-    const regex = new RegExp(`\\b${tech.replace('+', '\\+')}\\b`, 'i')
-    return regex.test(clean)
+    const escaped = tech.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return new RegExp(`(?<![\\w+])${escaped}(?![\\w+])`, CASE_SENSITIVE_TECH[tech] ? '' : 'i').test(clean)
   })
 
-  // Detect Workplace Type
-  let workplaceType: WorkplaceType = 'remote'
-  if (/\b(hybrid)\b/i.test(clean)) {
-    workplaceType = 'hybrid'
-  } else if (/\b(on-?site|in-?office|in-?person)\b/i.test(clean)) {
-    workplaceType = 'onsite'
-  } else if (/\b(remote|work from anywhere|wfh)\b/i.test(clean)) {
-    workplaceType = 'remote'
-  }
-
-  // Detect Salary Range
-  // e.g. $150,000 - $210,000 or $160k - $220k or 150k - 200k USD
+  // Detect Salary Range: the upper bound must be written in thousands (",000" or "k"), which
+  // skips hourly rates ("$45 - $65 per hour") and plain counts ("50 - 120 engineers").
+  // e.g. $150,000 - $210,000 or $160k - $220k or 150-200k USD
   let salaryMin: number | undefined = undefined
   let salaryMax: number | undefined = undefined
   let salaryMentioned: string | undefined = undefined
 
-  const salaryRegex = /(?:\$|USD\s*)?(\d{2,3})(?:,\d{3}|k)?(?:\s*(?:-|–|to)\s*(?:\$|USD\s*)?(\d{2,3})(?:,\d{3}|k)?)\s*(?:USD|\/yr|per year|annually)?/i
+  const salaryRegex = /(?<![\d,.])(?:\$|USD\s*)?(\d{2,3})(?:,\d{3}|k)?\s*(?:-|–|to)\s*(?:\$|USD\s*)?(\d{2,3})(?:,\d{3}|k)(?!\d)\s*(?:USD|\/yr|per year|annually)?/i
   const match = clean.match(salaryRegex)
   if (match) {
     salaryMentioned = match[0]
     let min = parseInt(match[1], 10)
-    let max = match[2] ? parseInt(match[2], 10) : min
+    let max = parseInt(match[2], 10)
     if (min < 1000) min *= 1000
     if (max < 1000) max *= 1000
     if (min > 30000 && min < 1000000) salaryMin = min
@@ -119,7 +112,6 @@ export function parseRawJobDescription(text: string): {
   // Auto detect potential title & company from line 1 & 2 if short
   let detectedRole: string | undefined = undefined
   let detectedCompany: string | undefined = undefined
-  let detectedLocation: string | undefined = undefined
 
   if (lines.length > 0 && lines[0].length < 60 && !lines[0].includes(':')) {
     if (lines[0].includes(' at ')) {
@@ -136,8 +128,6 @@ export function parseRawJobDescription(text: string): {
   return {
     detectedCompany,
     detectedRole,
-    detectedLocation,
-    workplaceType,
     salaryMin,
     salaryMax,
     extractedMetadata: {

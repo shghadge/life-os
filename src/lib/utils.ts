@@ -5,10 +5,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** `new Date("2026-08-15")` is UTC midnight, the previous day west of London; read plain dates as local midnight. */
+function parseDate(dateString: string): Date {
+  return new Date(/^\d{4}-\d{2}-\d{2}$/.test(dateString) ? `${dateString}T00:00` : dateString)
+}
+
 export function formatDate(dateString: string | undefined): string {
   if (!dateString) return "—"
   try {
-    const date = new Date(dateString)
+    const date = parseDate(dateString)
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
@@ -21,7 +26,7 @@ export function formatDate(dateString: string | undefined): string {
 export function formatFullDate(dateString: string | undefined): string {
   if (!dateString) return "—"
   try {
-    const date = new Date(dateString)
+    const date = parseDate(dateString)
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
@@ -51,7 +56,7 @@ export function formatRelativeTime(dateString: string | undefined): string {
   if (!dateString) return ""
   try {
     const now = new Date()
-    const date = new Date(dateString)
+    const date = parseDate(dateString)
     const diffInMs = now.getTime() - date.getTime()
     const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
     

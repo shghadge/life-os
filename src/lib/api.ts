@@ -1,4 +1,4 @@
-import type { JobActivity, JobApplication } from '@/types/job'
+import type { JobActivity, JobApplication, JobPatch } from '@/types/job'
 
 /** Key used by the browser-only version of the dashboard; migrated to the database once. */
 export const LEGACY_JOBS_STORAGE_KEY = 'life_os_job_applications_v1'
@@ -31,9 +31,9 @@ export const jobsApi = {
   list: () => request<Revisioned<{ jobs: JobApplication[] }>>('/api/jobs'),
   revision: () => request<{ revision: number }>('/api/revision'),
   create: (job: JobApplication) => sendJson<Revisioned<{ job: JobApplication }>>('/api/jobs', 'POST', job),
-  /** Replaces the editable fields; `keepalive` lets the save finish while the page unloads. */
-  update: (job: JobApplication, keepalive = false) =>
-    sendJson<Revisioned<{ job: JobApplication }>>(jobPath(job.id), 'PUT', job, keepalive),
+  /** Saves only the given fields (`null` clears one); `keepalive` lets the save finish while the page unloads. */
+  update: (id: string, patch: JobPatch, keepalive = false) =>
+    sendJson<Revisioned<{ job: JobApplication }>>(jobPath(id), 'PUT', patch, keepalive),
   remove: (id: string) => request<{ revision: number }>(jobPath(id), { method: 'DELETE' }),
   activity: (id: string) => request<{ activity: JobActivity[] }>(`${jobPath(id)}/activity`),
   resumeUrl: (id: string) => `${jobPath(id)}/resume`,

@@ -3,6 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { DatabaseSync, SQLInputValue } from 'node:sqlite'
 import { parseRawJobDescription } from '../src/lib/jd-parser.ts'
+import { getTodayDateString } from '../src/lib/storage.ts'
 import type {
   ActivityAction,
   ActivityActor,
@@ -478,7 +479,7 @@ function normalizeInput(input: JobInput): JobApplication {
     company: '',
     role: '',
     status: 'not_applied',
-    appliedDate: localDate(),
+    appliedDate: getTodayDateString(),
     notes: '',
     qaList: [],
     starred: false,
@@ -526,11 +527,6 @@ function applyPatch(current: JobApplication, patch: JobPatch): JobApplication {
     if (patch.salaryMax === undefined && next.salaryMax === undefined) next.salaryMax = parsed.salaryMax
   }
   return next
-}
-
-function localDate(date = new Date()): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
 function isPdf(bytes: Uint8Array): boolean {
